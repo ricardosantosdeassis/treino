@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plano de Treino</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    .concluido { text-decoration: line-through; opacity: 0.5; }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4">
+
+  <h1 class="text-2xl font-bold mb-4">Plano de Treino</h1>
+
+  <div id="abas" class="flex flex-wrap justify-center gap-2 mb-6"></div>
+
+  <div id="exercicios" class="w-full max-w-md space-y-3"></div>
+  <div id="timerDisplay" class="text-lg font-semibold mt-4"></div>
+  <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+  <audio id="restSound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"></audio>
+
+  <script>
+    const treino = {
+      "Segunda-feira": ["Supino reto com barra (4x6-8)", "Supino inclinado com halteres (4x8-10)", "Crucifixo reto (3x10-12)", "Tríceps corda (3x12)", "Tríceps francês unilateral (3x10)", "Mergulho entre bancos (2x até a falha)", "Caminhada inclinada (20 min)"],
+      "Terça-feira": ["Puxada frente com barra (4x8)", "Remada curvada (4x10)", "Remada unilateral (3x12)", "Pull-over com halter (3x15)", "Rosca direta com barra (3x10)", "Rosca alternada (3x12)", "Escada ou esteira inclinada (25 min)"],
+      "Quarta-feira": ["Agachamento livre (4x6-8)", "Leg press (4x10)", "Cadeira extensora (3x15)", "Stiff com halteres (3x10)", "Cadeira flexora (3x12)", "Panturrilha em pé (4x20)", "Bike leve (15-20 min)"],
+      "Quinta-feira": ["Desenvolvimento com halteres (4x8)", "Elevação lateral (4x12)", "Elevação frontal (3x12)", "Crucifixo invertido (3x15)", "Encolhimento com barra (3x20)", "Abdominal polia (3x15)", "Prancha (3x1 min)", "Cardio leve (20 min)"],
+      "Sexta-feira": ["Supino reto com halteres (3x10)", "Crucifixo inclinado (3x12)", "Puxada frente neutra (3x10)", "Remada baixa (3x12)", "Tríceps banco (3x até a falha)", "Rosca martelo (3x12)", "Escada ou caminhada rápida (25 min)"],
+      "Sábado": ["Agachamento com halter (3x12)", "Supino reto (3x12)", "Remada baixa (3x12)", "Desenvolvimento com halter (3x12)", "Rosca direta (3x15)", "Abdominal com carga (3x15)", "HIIT 30s rápido / 1min leve (15 min)"],
+      "Domingo": ["Descanso"]
+    };
+
+    const diaIcons = {
+      "Segunda-feira": "📤",
+      "Terça-feira": "💪",
+      "Quarta-feira": "🦵",
+      "Quinta-feira": "🏋️",
+      "Sexta-feira": "🔥",
+      "Sábado": "⚡",
+      "Domingo": "🛌"
+    };
+
+    const beep = document.getElementById("beep");
+    const exerciciosContainer = document.getElementById("exercicios");
+    const timerDisplay = document.getElementById("timerDisplay");
+    const abasContainer = document.getElementById("abas");
+
+    function criarAbas() {
+      Object.keys(treino).forEach(dia => {
+        const btn = document.createElement("button");
+        btn.innerHTML = `<span class='text-xl'>${diaIcons[dia] || ''}</span> <span class='ml-1'>${dia}</span>`;
+        btn.className = "px-4 py-2 rounded-lg cursor-pointer font-bold text-white bg-gray-700 hover:bg-yellow-500 transition flex items-center gap-2";
+        btn.onclick = () => selecionarAba(dia, btn);
+        abasContainer.appendChild(btn);
+      });
+    }
+
+    function selecionarAba(dia, botao) {
+  mostrarBotaoLimparSeDomingo(dia);
+      document.querySelectorAll("#abas button").forEach(b => b.classList.remove("bg-yellow-400", "text-black"));
+      botao.classList.add("bg-yellow-400", "text-black");
+      carregarExercicios(dia);
+    }
+
+    function carregarExercicios(dia) {
+      exerciciosContainer.innerHTML = '';
+      const salvos = JSON.parse(localStorage.getItem(dia) || '{}');
+
+      treino[dia].forEach((ex, idx) => {
+        const idBase = `${dia}-${idx}`;
+        const exSalvo = salvos[idBase] || { concluido: false, series: [] };
+        const seriesMatch = ex.match(/\((\d+)x/);
+        const nSeries = seriesMatch ? parseInt(seriesMatch[1]) : 0;
+
+        const div = document.createElement('div');
+        div.className = `p-3 rounded shadow space-y-2 ${exSalvo.concluido ? 'bg-green-800' : 'bg-gray-800'}`;
+
+        const cabecalho = document.createElement('div');
+        cabecalho.className = 'flex items-center justify-between';
+        cabecalho.innerHTML = `
+          <label class="flex items-center" data-id="${idBase}">
+            <input type="checkbox" class="mr-2 exercicio-check" ${exSalvo.concluido ? 'checked' : ''}>
+            <span class="${exSalvo.concluido ? 'concluido' : ''}">${ex}</span>
+          </label>
+          ${ex.includes('min') || ex.includes('1 min') ? `<button onclick="iniciarTimer(60)">▶️</button>` : ''}
+        `;
+
+        const series = document.createElement('div');
+        if (nSeries > 0) {
+          series.className = 'flex flex-col gap-2 mt-1';
+          let seriesConcluidas = 0;
+          const checkContainer = document.createElement('div');
+          checkContainer.className = 'flex flex-wrap gap-2';
+          for (let i = 0; i < nSeries; i++) {
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.className = 'w-5 h-5 accent-yellow-400';
+            if (exSalvo.series[i]) {
+              box.checked = true;
+              seriesConcluidas++;
+            }
+            box.onchange = () => {
+  salvarSeries(dia, idBase, i, box.checked);
+  if (box.checked) iniciarTimer(60); // inicia descanso de 1min00s após cada série
+};
+            checkContainer.appendChild(box);
+          }
+
+          const contador = document.createElement('span');
+          contador.textContent = `${seriesConcluidas}/${nSeries} séries concluídas`;
+          contador.className = 'text-sm text-yellow-300';
+
+          const barra = document.createElement('div');
+          barra.className = 'w-full h-2 bg-yellow-900 rounded overflow-hidden';
+          const progresso = document.createElement('div');
+          progresso.className = 'h-full bg-yellow-400 transition-all duration-300';
+          progresso.style.width = `${(seriesConcluidas / nSeries) * 100}%`;
+          barra.appendChild(progresso);
+
+          series.appendChild(checkContainer);
+          series.appendChild(contador);
+          series.appendChild(barra);
+        }
+
+        cabecalho.querySelector('.exercicio-check').onchange = function () {
+          exSalvo.concluido = this.checked;
+          this.nextElementSibling.classList.toggle('concluido');
+          salvarCheckCompleto(dia, idBase, exSalvo);
+        };
+
+        const checkDiv = document.createElement('div');
+checkDiv.className = 'mt-4 border-t border-yellow-600 pt-2 flex items-center justify-between';
+checkDiv.appendChild(cabecalho);
+div.appendChild(series);
+div.appendChild(checkDiv);
+        exerciciosContainer.appendChild(div);
+      });
+    }
+
+    function salvarCheckCompleto(dia, id, data) {
+      const salvos = JSON.parse(localStorage.getItem(dia) || '{}');
+      salvos[id] = data;
+      localStorage.setItem(dia, JSON.stringify(salvos));
+    }
+
+    function salvarSeries(dia, id, serieIndex, valor) {
+  const salvos = JSON.parse(localStorage.getItem(dia) || '{}');
+  if (!salvos[id]) salvos[id] = { concluido: false, series: [] };
+  salvos[id].series[serieIndex] = valor;
+
+  // só marca como concluído se usuário já tiver marcado manualmente OU todas as séries estiverem feitas
+  const checkboxPrincipal = document.querySelector(`[data-id='${id}'] .exercicio-check`);
+  if (salvos[id].series.every(v => v === true) && checkboxPrincipal?.checked) {
+    salvos[id].concluido = true;
+  } else {
+    salvos[id].concluido = false;
+  }
+
+  localStorage.setItem(dia, JSON.stringify(salvos));
+  carregarExercicios(dia);
+    }
+
+    function iniciarTimer(segundos) {
+      clearInterval(window.timerInterval);
+      let restante = segundos;
+      timerDisplay.innerText = formatarTempo(restante);
+      window.timerInterval = setInterval(() => {
+        restante--;
+        timerDisplay.innerText = formatarTempo(restante);
+        if (restante <= 0) {
+          clearInterval(timerInterval);
+          beep.play();
+          document.getElementById("restSound").play();
+          alert("Tempo encerrado!");
+          timerDisplay.innerText = '';
+        }
+      }, 1000);
+    }
+
+    function formatarTempo(s) {
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${m.toString().padStart(2, '0')}:${r.toString().padStart(2, '0')}`;
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(console.error);
+    }
+
+    criarAbas();
+    const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long' });
+    const capitalizado = hoje.charAt(0).toUpperCase() + hoje.slice(1);
+    const btnHoje = Array.from(document.querySelectorAll('#abas button')).find(b => b.textContent.includes(capitalizado));
+    if (btnHoje) btnHoje.click();
+
+// Botão de limpar se o usuário selecionar o Domingo
+function mostrarBotaoLimparSeDomingo(diaSelecionado) {
+  const botaoExistente = document.getElementById('botao-limpar');
+  if (diaSelecionado === 'Domingo' && !botaoExistente) {
+    const btnLimpar = document.createElement('button');
+    btnLimpar.id = 'botao-limpar';
+    btnLimpar.textContent = '🧹 Limpar semana';
+    btnLimpar.className = 'mt-6 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded';
+    btnLimpar.onclick = () => {
+      if (confirm('Deseja realmente apagar todo o progresso da semana?')) {
+        Object.keys(treino).forEach(dia => localStorage.removeItem(dia));
+        location.reload();
+      }
+    };
+    document.body.appendChild(btnLimpar);
+  } else if (diaSelecionado !== 'Domingo' && botaoExistente) {
+    botaoExistente.remove();
+  }
+}
+
+    // Botão de limpar no domingo
+    const btnLimpar = document.createElement('button');
+    btnLimpar.textContent = '🧹 Limpar semana';
+    btnLimpar.className = 'mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded';
+    btnLimpar.onclick = () => {
+      if (confirm('Deseja realmente apagar todo o progresso da semana?')) {
+        Object.keys(treino).forEach(dia => localStorage.removeItem(dia));
+        location.reload();
+      }
+    };
+    if (capitalizado === 'Domingo') {
+  const limparContainer = document.createElement('div');
+  limparContainer.className = 'flex justify-center mt-8';
+  limparContainer.appendChild(btnLimpar);
+  document.body.appendChild(limparContainer);
+}
+  </script>
+</body>
+</html>
