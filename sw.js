@@ -2,6 +2,7 @@ const CACHE_NAME = "treino-cache-v1";
 const urlsToCache = [
   "./",
   "./index.html",
+  "./dieta.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
