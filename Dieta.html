@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dieta Ricardo</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<style>
+    tr.checked { background-color: #d4edda !important; }
+    .meta-ok { background-color: #d1e7dd; color: #0f5132; padding: 10px; border-radius: 4px; margin-top: 10px; }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container my-4">
+<h1 class="text-center mb-4">Dieta Ricardo</h1>
+<div class="text-center mb-4">
+<button class="btn btn-danger" onclick="resetarTudo()">Resetar Semana</button>
+</div>
+<div id="planos"></div>
+<div class="alert alert-info mt-4">💧 Recomendação diária de água: <strong>4.500 ml</strong> (kg × 35ml)</div>
+</div>
+<script>
+    const dias = ["Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado", "Domingo"];
+    const refeicoes = [
+      ["05:00", "Pré-Treino", "1 scoop de pré-treino RAZE + 500ml água", 0, 0, 0, 0],
+      ["09:00", "Café da Manhã", "4 claras + 2 ovos + pão integral + fruta +  1 colher de pasta de amendoim", 460, 32, 28, 24],
+      ["12:00", "Lanche da Manhã", "Whey + 1 banana", 220, 25, 20, 2],
+      ["14:00", "Almoço", "150g frango + 150g arroz + salada", 470, 38, 40, 10],
+      ["17:00", "Lanche da Tarde", "1 fruta + 20g castanhas", 200, 3, 15, 15],
+      ["19:00", "Jantar", "150g proteína + legumes + 150g carb", 530, 35, 55, 12],
+      ["21:00", "Ceia", "2 ovos inteiros + 1 colher de pasta de amendoim", 230, 16, 3, 18]
+    ];
+
+    function carregarPlano() {
+      const container = document.getElementById("planos");
+      dias.forEach(dia => {
+        const agua = parseInt(localStorage.getItem("agua_" + dia)) || 0;
+        let bloco = `<div class="mb-5"><h3>${dia}-feira</h3>`;
+        if (dia === "Domingo") {
+          bloco += `<div class="alert alert-warning">Refeição livre com moderação.</div>`;
+        } else {
+          bloco += `<table class="table table-bordered table-sm"><thead><tr class="table-secondary">
+          <th>✔</th><th>Horário</th><th>Refeição</th><th>Descrição</th><th>Calorias</th><th>Proteína</th><th>Carbo</th><th>Gord.</th></tr></thead><tbody>`;
+          let total = [0, 0, 0, 0]; // [kcal, prot, carb, gord]
+          refeicoes.forEach((r, i) => {
+            const key = dia + "_" + i;
+            const checked = localStorage.getItem(key) === "true";
+            bloco += `<tr class="${checked ? 'checked' : ''}">
+              <td class="text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleCheck(this, '${key}')"></td>
+              <td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
+              <td>${r[3]}</td><td>${r[4]}g</td><td>${r[5]}g</td><td>${r[6]}g</td>
+            </tr>`;
+            total[0] += r[3]; total[1] += r[4]; total[2] += r[5]; total[3] += r[6];
+          });
+          bloco += `<tr class="table-info"><td colspan="4"><strong>Total do dia:</strong></td>
+            <td><strong>${total[0]} kcal</strong></td><td><strong>${total[1]}g</strong></td>
+            <td><strong>${total[2]}g</strong></td><td><strong>${total[3]}g</strong></td></tr>`;
+          bloco += `</tbody></table>`;
+        }
+
+        const ml = agua;
+        const porcentagem = Math.min((ml / 4500) * 100, 100).toFixed(0);
+        bloco += `
+          <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+            <span><strong>Água:</strong> <span id="ml_${dia}">${ml}</span> ml</span>
+            <button class="btn btn-sm btn-primary" onclick="ajustarAgua('${dia}', 250)">+250ml</button>
+            <button class="btn btn-sm btn-secondary" onclick="ajustarAgua('${dia}', -250)">-250ml</button>
+            <input type="number" id="input_${dia}" class="form-control form-control-sm" placeholder="ml personalizado" style="width: 130px;">
+            <button class="btn btn-sm btn-success" onclick="adicionarPersonalizado('${dia}')">Adicionar</button>
+          </div>
+          <div class="progress mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="4500">
+            <div class="progress-bar" id="bar_${dia}" style="width: ${porcentagem}%;">${porcentagem}%</div>
+          </div>
+          <div id="meta_${dia}"></div>
+        </div>`;
+        container.innerHTML += bloco;
+        verificarMeta(dia, ml);
+      });
+    }
+
+    function toggleCheck(checkbox, key) {
+      localStorage.setItem(key, checkbox.checked);
+      checkbox.closest("tr").classList.toggle("checked", checkbox.checked);
+    }
+
+    function ajustarAgua(dia, delta) {
+      const id = "agua_" + dia;
+      let atual = parseInt(localStorage.getItem(id)) || 0;
+      atual = Math.max(0, atual + delta);
+      localStorage.setItem(id, atual);
+      document.getElementById("ml_" + dia).textContent = atual;
+      atualizarBarra(dia, atual);
+      verificarMeta(dia, atual);
+    }
+
+    function adicionarPersonalizado(dia) {
+      const valor = parseInt(document.getElementById("input_" + dia).value);
+      if (!isNaN(valor) && valor > 0) {
+        ajustarAgua(dia, valor);
+        document.getElementById("input_" + dia).value = "";
+      }
+    }
+
+    function atualizarBarra(dia, ml) {
+      const barra = document.getElementById("bar_" + dia);
+      const porcentagem = Math.min((ml / 4500) * 100, 100).toFixed(0);
+      barra.style.width = porcentagem + "%";
+      barra.textContent = porcentagem + "%";
+    }
+
+    function verificarMeta(dia, ml) {
+      const metaDiv = document.getElementById("meta_" + dia);
+      if (ml >= 4500) {
+        metaDiv.innerHTML = '<div class="meta-ok">✅ Meta de água atingida para ' + dia + '!</div>';
+      } else {
+        metaDiv.innerHTML = '';
+      }
+    }
+
+    function resetarTudo() {
+      if (confirm("Deseja limpar todas as marcações?")) {
+        localStorage.clear();
+        location.reload();
+      }
+    }
+
+    carregarPlano();
+  </script>
+</body>
+</html>
