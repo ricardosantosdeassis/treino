@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plano de Corrida – 12 Semanas (5 km sub 30)</title>
+  <style>
+    :root{
+      --bg:#0f172a;          /* slate-900 */
+      --card:#111827;        /* gray-900 */
+      --muted:#94a3b8;       /* slate-400 */
+      --text:#e5e7eb;        /* gray-200 */
+      --accent:#22c55e;      /* green-500 */
+      --accent-2:#38bdf8;    /* sky-400 */
+      --border:#1f2937;      /* gray-800 */
+      --warn:#f59e0b;        /* amber-500 */
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+      background:linear-gradient(180deg,#0b1222,var(--bg)); color:var(--text);
+    }
+    header{
+      max-width:1100px; margin:32px auto 0; padding:0 16px 8px;
+    }
+    .title{
+      font-size:clamp(24px,3vw,40px); font-weight:800; line-height:1.1; margin:0 0 6px;
+      letter-spacing:.2px;
+    }
+    .subtitle{ color:var(--muted); margin:0 0 16px; }
+    .panel{
+      background:var(--card); border:1px solid var(--border); border-radius:16px;
+      padding:16px; display:grid; gap:12px; grid-template-columns:1fr; box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    .controls{ display:flex; flex-wrap:wrap; gap:12px; align-items:center }
+    .field{ display:flex; gap:8px; align-items:center; background:#0b1324; border:1px solid var(--border); padding:10px 12px; border-radius:12px }
+    .field label{ font-size:14px; color:var(--muted) }
+    .field input{ background:transparent; border:none; color:var(--text); font-size:14px; outline:none }
+    .btns{ display:flex; flex-wrap:wrap; gap:10px; }
+    button{
+      background:var(--accent-2); color:#062033; border:none; padding:10px 14px; border-radius:12px; font-weight:700;
+      cursor:pointer; transition:transform .05s ease,filter .2s ease; box-shadow:0 6px 18px rgba(56,189,248,.25)
+    }
+    button:hover{ filter:brightness(1.06) }
+    button:active{ transform:translateY(1px) }
+    .ghost{ background:transparent; color:var(--text); border:1px solid var(--border) }
+
+    main{ max-width:1100px; margin:18px auto 80px; padding:0 16px; display:grid; gap:14px }
+
+    details.week{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden }
+    details[open]{ box-shadow:0 10px 30px rgba(0,0,0,.25) }
+    summary{
+      list-style:none; padding:16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px;
+      background:linear-gradient(180deg,#0e162a 0%, #0b1324 100%);
+    }
+    summary::-webkit-details-marker{ display:none }
+    .wk-title{ font-weight:800; font-size:18px }
+    .wk-meta{ color:var(--muted); font-size:13px }
+
+    table{ width:100%; border-collapse:collapse; }
+    thead th{ text-align:left; font-size:12px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; padding:10px 12px; background:#0b1324; border-bottom:1px solid var(--border) }
+    tbody td{ padding:12px; border-bottom:1px dashed var(--border); vertical-align:middle }
+    tbody tr:last-child td{ border-bottom:none }
+    tbody tr:hover{ background:#0c1a31 }
+    .day{ font-weight:700 }
+    .date{ color:var(--muted); font-variant-numeric:tabular-nums }
+    .done{ text-align:center; width:60px }
+    .obs input{ width:100%; background:#0b1324; border:1px solid var(--border); border-radius:10px; padding:8px 10px; color:var(--text) }
+
+    .legend{ color:var(--muted); font-size:13px; line-height:1.4 }
+
+    footer{ max-width:1100px; margin:0 auto 60px; padding:0 16px; color:var(--muted); font-size:13px }
+    .accent{ color:var(--accent) }
+
+    @media print{
+      body{ background:white; color:black }
+      header,.panel,footer{ box-shadow:none }
+      button{ display:none }
+      .field{ border-color:#ccc; background:#fff }
+      details.week{ break-inside:avoid }
+      summary{ background:#f5f5f5; color:#000 }
+      thead th{ background:#f5f5f5; color:#333; border-bottom-color:#ddd }
+      tbody td{ border-bottom-color:#eee }
+      .obs input{ border-color:#ccc; color:#000 }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="title">Plano de Corrida – 12 Semanas <span class="accent">(5 km &lt; 30′)</span></h1>
+    <p class="subtitle">Estrutura fixa: <strong>Terça (intervalado médio)</strong>, <strong>Quinta (leve)</strong>, <strong>Sábado (velocidade)</strong>, <strong>Domingo (longão)</strong>.</p>
+    <div class="panel">
+      <div class="controls">
+        <div class="field">
+          <label for="start">Início (escolha uma <strong>terça-feira</strong>):</label>
+          <input id="start" type="date" />
+        </div>
+        <div class="btns">
+          <button id="btn-apply">Aplicar datas</button>
+          <button class="ghost" id="btn-expand">Expandir tudo</button>
+          <button class="ghost" id="btn-collapse">Recolher tudo</button>
+          <button id="btn-csv">Baixar CSV</button>
+          <button class="ghost" id="btn-clear">Limpar progresso</button>
+        </div>
+      </div>
+      <div class="legend">As datas serão calculadas a partir da terça-feira inicial. Se você escolher outro dia, 
+        ajustaremos automaticamente para a <strong>próxima terça-feira</strong>. O progresso e observações ficam salvos neste navegador.</div>
+    </div>
+  </header>
+
+  <main id="weeks"></main>
+
+  <footer>
+    <p><strong>Notas rápidas:</strong> Quinta é regenerativo; Sábado trabalha velocidade; Domingo é base de resistência. Ajuste o ritmo ao conforto e evite dor. Hidrate-se e faça alongamento.</p>
+  </footer>
+
+<script>
+  // ---------- Dados do plano ----------
+  const PLAN = [
+    { w:1,  dias:[
+      {d:"Terça",   t:"6 × 1 min forte / 2 min caminhada"},
+      {d:"Quinta",  t:"3 km leve"},
+      {d:"Sábado",  t:"8 × 30s rápido / 90s leve"},
+      {d:"Domingo", t:"4 km leve"},
+    ]},
+    { w:2,  dias:[
+      {d:"Terça",   t:"7 × 1 min forte / 90s caminhada"},
+      {d:"Quinta",  t:"3 km leve"},
+      {d:"Sábado",  t:"10 × 30s rápido / 90s leve"},
+      {d:"Domingo", t:"4,5 km leve"},
+    ]},
+    { w:3,  dias:[
+      {d:"Terça",   t:"8 × 90s moderado / 90s leve"},
+      {d:"Quinta",  t:"4 km leve"},
+      {d:"Sábado",  t:"8 × 45s rápido / 90s leve"},
+      {d:"Domingo", t:"5 km leve"},
+    ]},
+    { w:4,  dias:[
+      {d:"Terça",   t:"6 × 2 min moderado / 90s leve"},
+      {d:"Quinta",  t:"4 km leve"},
+      {d:"Sábado",  t:"10 × 45s rápido / 90s leve"},
+      {d:"Domingo", t:"5 km leve"},
+    ]},
+    { w:5,  dias:[
+      {d:"Terça",   t:"6 × 3 min moderado / 90s leve"},
+      {d:"Quinta",  t:"4,5 km leve"},
+      {d:"Sábado",  t:"12 × 1 min rápido / 1 min leve"},
+      {d:"Domingo", t:"5,5 km leve"},
+    ]},
+    { w:6,  dias:[
+      {d:"Terça",   t:"7 × 3 min moderado / 90s leve"},
+      {d:"Quinta",  t:"4,5 km leve"},
+      {d:"Sábado",  t:"8 × 90s rápido / 90s leve"},
+      {d:"Domingo", t:"6 km leve"},
+    ]},
+    { w:7,  dias:[
+      {d:"Terça",   t:"8 × 2 min forte / 1 min leve"},
+      {d:"Quinta",  t:"5 km leve"},
+      {d:"Sábado",  t:"Fartlek 25 min (1 min forte / 2 min leve)"},
+      {d:"Domingo", t:"6 km leve"},
+    ]},
+    { w:8,  dias:[
+      {d:"Terça",   t:"6 × 4 min moderado / 2 min leve"},
+      {d:"Quinta",  t:"5 km leve"},
+      {d:"Sábado",  t:"10 × 2 min rápido / 90s leve"},
+      {d:"Domingo", t:"6,5 km leve"},
+    ]},
+    { w:9,  dias:[
+      {d:"Terça",   t:"5 × 5 min ritmo-alvo / 2 min leve"},
+      {d:"Quinta",  t:"5 km leve"},
+      {d:"Sábado",  t:"14 × 1 min rápido / 1 min leve"},
+      {d:"Domingo", t:"7 km leve"},
+    ]},
+    { w:10, dias:[
+      {d:"Terça",   t:"6 × 4 min ritmo-alvo / 90s leve"},
+      {d:"Quinta",  t:"5,5 km leve"},
+      {d:"Sábado",  t:"10 × 90s rápido / 90s leve"},
+      {d:"Domingo", t:"7,5 km leve"},
+    ]},
+    { w:11, dias:[
+      {d:"Terça",   t:"4 × 6 min ritmo-alvo / 2 min leve"},
+      {d:"Quinta",  t:"6 km leve"},
+      {d:"Sábado",  t:"Fartlek 30 min (1 min rápido / 2 min leve)"},
+      {d:"Domingo", t:"7,5 km leve"},
+    ]},
+    { w:12, dias:[
+      {d:"Terça",   t:"3 × 8 min ritmo de prova / 3 min leve"},
+      {d:"Quinta",  t:"4 km leve"},
+      {d:"Sábado",  t:"20 min leve + 4 × 1 min rápido"},
+      {d:"Domingo", t:"Prova/Teste 5 km &lt; 30 min"},
+    ]},
+  ];
+
+  const DAY_OFFSET = {"Terça":0, "Quinta":2, "Sábado":4, "Domingo":5};
+
+  // ---------- Utilidades ----------
+  const $ = (sel,root=document)=>root.querySelector(sel);
+  const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+
+  function toISODate(d){
+    const z = n=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+  }
+  function formatBR(d){
+    const z = n=>String(n).padStart(2,'0');
+    return `${z(d.getDate())}/${z(d.getMonth()+1)}/${d.getFullYear()}`;
+  }
+  function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function nextTuesday(from){
+    const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    // 0=Dom,1=Seg,2=Ter
+    const dow = d.getDay();
+    const delta = (9 - dow) % 7; // days to next Tuesday (if Tue, 0)
+    return addDays(d, delta);
+  }
+
+  // ---------- Render ----------
+  function renderWeeks(){
+    const container = $('#weeks');
+    container.innerHTML = '';
+    PLAN.forEach(week => {
+      const det = document.createElement('details');
+      det.className = 'week';
+      if (week.w === 1) det.open = true;
+      const sum = document.createElement('summary');
+      sum.innerHTML = `<span class="wk-title">Semana ${week.w}</span><span class="wk-meta">Ter, Qui, Sáb, Dom</span>`;
+      det.appendChild(sum);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      thead.innerHTML = `<tr>
+        <th>Feito</th>
+        <th>Dia</th>
+        <th>Data</th>
+        <th>Treino</th>
+        <th>Observações / Ritmo real</th>
+      </tr>`;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      week.dias.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.dataset.week = week.w;
+        tr.dataset.day = row.d;
+
+        const tdDone = document.createElement('td');
+        tdDone.className = 'done';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.addEventListener('change', () => saveProgress());
+        tdDone.appendChild(chk);
+
+        const tdDay = document.createElement('td');
+        tdDay.className = 'day';
+        tdDay.textContent = row.d;
+
+        const tdDate = document.createElement('td');
+        tdDate.className = 'date';
+        tdDate.textContent = '—';
+
+        const tdTrain = document.createElement('td');
+        tdTrain.textContent = row.t;
+
+        const tdObs = document.createElement('td');
+        tdObs.className = 'obs';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Ex.: tempo, FC, sensação, pace...';
+        input.addEventListener('input', () => saveProgress());
+        tdObs.appendChild(input);
+
+        tr.append(tdDone, tdDay, tdDate, tdTrain, tdObs);
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      det.appendChild(table);
+      container.appendChild(det);
+    });
+  }
+
+  // ---------- Datas ----------
+  function applyDates(){
+    const inp = $('#start');
+    let start = inp.value ? new Date(inp.value) : new Date();
+    start = nextTuesday(start);
+    inp.value = toISODate(start);
+
+    $$('#weeks tbody tr').forEach(tr => {
+      const w = Number(tr.dataset.week);
+      const d = tr.dataset.day;
+      const offset = ((w - 1) * 7) + DAY_OFFSET[d];
+      const date = addDays(start, offset);
+      $('.date', tr).textContent = formatBR(date);
+    });
+
+    saveProgress();
+  }
+
+  // ---------- Persistência ----------
+  const KEY = 'plan-5k-12w-v1';
+
+  function saveProgress(){
+    const data = { start: $('#start').value, rows: [] };
+    $$('#weeks tbody tr').forEach(tr => {
+      const chk = $('input[type="checkbox"]', tr).checked;
+      const obs = $('input[type="text"]', tr).value;
+      const row = {
+        w: Number(tr.dataset.week), d: tr.dataset.day,
+        date: $('.date', tr).textContent, done: chk, obs
+      };
+      data.rows.push(row);
+    });
+    localStorage.setItem(KEY, JSON.stringify(data));
+  }
+
+  function loadProgress(){
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return;
+    try{
+      const data = JSON.parse(raw);
+      if(data.start) $('#start').value = data.start;
+      applyDates(); // recalcula datas também
+      // preencher marcações e observações
+      data.rows?.forEach(saved => {
+        const tr = $(`#weeks tbody tr[data-week="${saved.w}"][data-day="${saved.d}"]`);
+        if(!tr) return;
+        $('input[type="checkbox"]', tr).checked = !!saved.done;
+        $('input[type="text"]', tr).value = saved.obs || '';
+      });
+    }catch(e){ console.warn('Falha ao carregar progresso', e); }
+  }
+
+  function clearProgress(){
+    localStorage.removeItem(KEY);
+    $$('#weeks tbody tr').forEach(tr => {
+      $('input[type="checkbox"]', tr).checked = false;
+      $('input[type="text"]', tr).value = '';
+    });
+  }
+
+  // ---------- CSV ----------
+  function downloadCSV(){
+    const rows = [];
+    rows.push(['Semana','Dia','Data','Treino','Feito','Observações']);
+    $$('#weeks tbody tr').forEach(tr => {
+      const w = tr.dataset.week;
+      const d = tr.dataset.day;
+      const date = $('.date', tr).textContent;
+      const train = tr.children[3].textContent;
+      const done = $('input[type="checkbox"]', tr).checked ? 'Sim' : 'Não';
+      const obs = $('input[type="text"]', tr).value.replace(/\n/g,' ');
+      rows.push([w,d,date,train,done,obs]);
+    });
+    const csv = rows.map(r => r.map(cell => '"' + String(cell).replaceAll('"','""') + '"').join(',')).join('\n');
+    const blob = new Blob(["\ufeff" + csv], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'plano_5k_12_semanas.csv';
+    a.click();
+  }
+
+  // ---------- Controles ----------
+  $('#btn-apply')?.addEventListener('click', applyDates);
+  $('#btn-expand')?.addEventListener('click', () => {
+    $$('#weeks details.week').forEach(d => d.open = true);
+  });
+  $('#btn-collapse')?.addEventListener('click', () => {
+    $$('#weeks details.week').forEach(d => d.open = false);
+  });
+  $('#btn-csv')?.addEventListener('click', downloadCSV);
+  $('#btn-clear')?.addEventListener('click', () => { clearProgress(); saveProgress(); });
+  $('#start')?.addEventListener('change', applyDates);
+
+  // ---------- Inicialização ----------
+  renderWeeks();
+  // definir data padrão como próxima terça-feira
+  const today = new Date();
+  const startDefault = nextTuesday(today);
+  $('#start').value = toISODate(startDefault);
+  applyDates();
+  loadProgress();
+</script>
+</body>
+</html>
