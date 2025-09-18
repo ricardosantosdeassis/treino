@@ -92,8 +92,8 @@
     <div class="panel">
       <div class="controls">
         <div class="field">
-          <label for="start">Início (escolha uma <strong>terça-feira</strong>):</label>
-          <input id="start" type="date" />
+          <label for="start">Início (fixo em <strong>02/09/2025</strong>):</label>
+          <input id="start" type="date" disabled />
         </div>
         <div class="btns">
           <button id="btn-apply">Aplicar datas</button>
@@ -103,8 +103,7 @@
           <button class="ghost" id="btn-clear">Limpar progresso</button>
         </div>
       </div>
-      <div class="legend">As datas serão calculadas a partir da terça-feira inicial. Se você escolher outro dia, 
-        ajustaremos automaticamente para a <strong>próxima terça-feira</strong>. O progresso e observações ficam salvos neste navegador.</div>
+      <div class="legend">As datas são calculadas a partir de <strong>02/09/2025 (terça-feira)</strong>. O progresso e observações ficam salvos neste navegador.</div>
     </div>
   </header>
 
@@ -208,11 +207,14 @@
   function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
   function nextTuesday(from){
     const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-    // 0=Dom,1=Seg,2=Ter
-    const dow = d.getDay();
-    const delta = (9 - dow) % 7; // days to next Tuesday (if Tue, 0)
+    const dow = d.getDay(); // 0 Dom, 1 Seg, 2 Ter
+    const delta = (9 - dow) % 7;
     return addDays(d, delta);
   }
+
+  // ---------- Data fixa do cronograma ----------
+  const FIXED_START = new Date(2025, 8, 2); // 02/09/2025 (terça-feira)
+  const FIXED_START_ISO = toISODate(FIXED_START);
 
   // ---------- Render ----------
   function renderWeeks(){
@@ -282,9 +284,8 @@
   // ---------- Datas ----------
   function applyDates(){
     const inp = $('#start');
-    let start = inp.value ? new Date(inp.value) : new Date();
-    start = nextTuesday(start);
-    inp.value = toISODate(start);
+    const start = FIXED_START;
+    inp.value = FIXED_START_ISO;
 
     $$('#weeks tbody tr').forEach(tr => {
       const w = Number(tr.dataset.week);
@@ -301,7 +302,7 @@
   const KEY = 'plan-5k-12w-v1';
 
   function saveProgress(){
-    const data = { start: $('#start').value, rows: [] };
+    const data = { start: FIXED_START_ISO, rows: [] };
     $$('#weeks tbody tr').forEach(tr => {
       const chk = $('input[type="checkbox"]', tr).checked;
       const obs = $('input[type="text"]', tr).value;
@@ -319,8 +320,7 @@
     if(!raw) return;
     try{
       const data = JSON.parse(raw);
-      if(data.start) $('#start').value = data.start;
-      applyDates(); // recalcula datas também
+      applyDates(); // sempre com a data fixa
       // preencher marcações e observações
       data.rows?.forEach(saved => {
         const tr = $(`#weeks tbody tr[data-week="${saved.w}"][data-day="${saved.d}"]`);
@@ -370,14 +370,13 @@
   });
   $('#btn-csv')?.addEventListener('click', downloadCSV);
   $('#btn-clear')?.addEventListener('click', () => { clearProgress(); saveProgress(); });
-  $('#start')?.addEventListener('change', applyDates);
+  // input desabilitado — listener de change é desnecessário e foi removido
 
   // ---------- Inicialização ----------
   renderWeeks();
-  // definir data padrão como próxima terça-feira
-  const today = new Date();
-  const startDefault = nextTuesday(today);
-  $('#start').value = toISODate(startDefault);
+  // fixar data imutável e desabilitar o input
+  $('#start').value = FIXED_START_ISO;
+  $('#start').setAttribute('disabled', 'disabled');
   applyDates();
   loadProgress();
 </script>
